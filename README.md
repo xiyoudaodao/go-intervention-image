@@ -21,15 +21,22 @@ if err != nil {
     panic(err)
 }
 
-// resize image instance
-if err := img.Resize(300, 600); err != nil {
-    fmt.Println(err.Error())
-}
-
 // set watermark
-img.SetWaterMark(&WaterMarkConfig{
-    DestPosition: "right buttom",
+img.AddWaterMarkImg("", &WaterMarkConfig{
+    DestPosition: " left  top ",
 })
+img.AddWaterMarkImg("", &WaterMarkConfig{
+    DestPosition: " right  buttom ",
+})
+img.AddWaterMarkText("this is a testing", &WaterMarkConfig{
+    DestPosition: " right  top ",
+})
+img.AddWaterMarkText("this is a testing", &WaterMarkConfig{
+    DestPosition: " left  buttom ",
+})
+
+// resize image instance
+img.Resize(300, 600)
 
 // save image in desired format, save default jpeg
 img.Save("test", 80)

@@ -1,7 +1,6 @@
 package goInterventionImage
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -12,13 +11,20 @@ func TestInterventionImage_SaveToWEBP_SaveToWEBP(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	img.SetWaterMark(&WaterMarkConfig{
+	img.AddWaterMarkImg("", &WaterMarkConfig{
+		DestPosition: " left  top ",
+	})
+	img.AddWaterMarkImg("", &WaterMarkConfig{
+		DestPosition: " right  buttom ",
+	})
+	img.AddWaterMarkText("这是一个测试", &WaterMarkConfig{
+		DestPosition: " right  top ",
+	})
+	img.AddWaterMarkText("这是一个测试", &WaterMarkConfig{
 		DestPosition: " left  buttom ",
 	})
-	if err := img.AddWaterMarkImg(""); err != nil {
-		fmt.Println(err.Error())
-	}
-	img.SaveToWEBP("13212", 80)
+	img.Resize(300, 600)
+	img.SaveToJPG("13212", 80)
 }
 
 func TestInterventionImage_Resize(t *testing.T) {
@@ -28,23 +34,16 @@ func TestInterventionImage_Resize(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	img.Resize(300, 600)
-	if err := img.AddWaterMarkText("this is a testing"); err != nil {
-		fmt.Println(err.Error())
-	}
+	img.AddWaterMarkText("this is a testing", nil)
 	img.SaveToPNG("123")
 }
 
 func TestInterventionImage_Save(t *testing.T) {
-	img, err := NewInterventionImage(&Config{})
+	img, err := NewInterventionImage(nil)
 	if err != nil {
 		panic(err)
 	}
-	if err := img.Resize(300, 600); err != nil {
-		fmt.Println(err.Error())
-	}
-	if err := img.AddWaterMarkText("this is a testing"); err != nil {
-		fmt.Println(err.Error())
-	}
+	img.Resize(300, 600)
+	img.AddWaterMarkText("this is a testing", nil)
 	img.SaveToJPG("123", 80)
 }

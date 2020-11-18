@@ -3,7 +3,7 @@ package goInterventionImage
 import (
 	"bytes"
 	"fmt"
-	webp2 "github.com/chai2010/webp"
+	"github.com/chai2010/webp"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
 	"github.com/nfnt/resize"
@@ -49,10 +49,9 @@ func (i *InterventionImage) setImage() (err error) {
 }
 
 //图片缩放
-func (i *InterventionImage) Resize(dstW uint, dstH uint) (err error) {
+func (i *InterventionImage) Resize(dstW uint, dstH uint) {
 	i.image = resize.Resize(dstW, dstH, i.newNRGBA, resize.Lanczos3)
 	i.initNewNRGBA()
-	return nil
 }
 
 //初始化
@@ -113,7 +112,10 @@ type WaterMarkConfig struct {
 }
 
 //设置水印
-func (i *InterventionImage) SetWaterMark(w *WaterMarkConfig) (err error) {
+func (i *InterventionImage) setWaterMark(w *WaterMarkConfig) (err error) {
+	if w == nil {
+		w = &WaterMarkConfig{}
+	}
 	i.waterMarkConfig = w
 	var fontBytes *[]byte
 	if w.Fontbase64 != nil && len(*w.Fontbase64) > 0 {
@@ -121,21 +123,44 @@ func (i *InterventionImage) SetWaterMark(w *WaterMarkConfig) (err error) {
 	}
 	if w.FontPath != "" {
 		if *fontBytes, err = ioutil.ReadFile(w.FontPath); err != nil {
+			log.Printf("setWaterMark ReadFile FontPath: %s, err: %s .\r\n", w.FontPath, err.Error())
 			return
 		}
 	}
 	if fontBytes != nil && len(*fontBytes) > 0 {
 		if i.font, err = freetype.ParseFont(*fontBytes); err != nil {
+			log.Printf("setWaterMark ParseFont FontPath err: %s .\r\n", err.Error())
 			return
 		}
 	}
 	return
 }
 
-func (i *InterventionImage) calculateXY(waterMarkW int, waterMarkH int, imgW int, imgH int) (destX int, destY int) {
+//文字是从左下角定位
+func (i *InterventionImage) calculateTextXY(waterMarkW int, waterMarkH int, imgW int, imgH int) (destX int, destY int) {
 	destX = 0
 	destY = waterMarkH
-	log.Println(strings.ToUpper(DeleteExtraSpace(i.waterMarkConfig.DestPosition)))
+	switch strings.ToUpper(DeleteExtraSpace(i.waterMarkConfig.DestPosition)) {
+	case "LEFT TOP":
+	case "LEFT BUTTOM":
+		destY = imgH
+	case "RIGHT TOP":
+		destX = imgW - waterMarkW
+	case "RIGHT BUTTOM":
+		destX = imgW - waterMarkW
+		destY = imgH
+	case "CENTER CENTER":
+		destX = (imgW - waterMarkW) / 2
+		destY = (imgH - waterMarkH) / 2
+	}
+	log.Printf("destX: %d  destY: %d  \r\n", destX, destY)
+	return
+}
+
+//图片是从左上角定位
+func (i *InterventionImage) calculateImageXY(waterMarkW int, waterMarkH int, imgW int, imgH int) (destX int, destY int) {
+	destX = 0
+	destY = 0
 	switch strings.ToUpper(DeleteExtraSpace(i.waterMarkConfig.DestPosition)) {
 	case "LEFT TOP":
 	case "LEFT BUTTOM":
@@ -154,7 +179,10 @@ func (i *InterventionImage) calculateXY(waterMarkW int, waterMarkH int, imgW int
 }
 
 //图片添加文字水印
-func (i *InterventionImage) AddWaterMarkText(waterMarkText string) (err error) {
+func (i *InterventionImage) AddWaterMarkText(waterMarkText string, w *WaterMarkConfig) {
+	if err := i.setWaterMark(w); err != nil {
+		return
+	}
 	c := freetype.NewContext()
 	c.SetFont(i.font)
 	if i.waterMarkConfig.FontDPI == 0 {
@@ -169,8 +197,8 @@ func (i *InterventionImage) AddWaterMarkText(waterMarkText string) (err error) {
 	c.SetClip(i.newNRGBA.Bounds())
 	c.SetDst(i.newNRGBA)
 
-	dsX := 10
-	dsY := i.newNRGBA.Bounds().Dy() - int(c.PointToFixed(i.waterMarkConfig.FontSize)>>6) - 10
+	dsX := 0
+	dsY := i.newNRGBA.Bounds().Dy()
 	if i.waterMarkConfig.DestX > 0 && i.waterMarkConfig.DestY > 0 {
 		dsX = i.waterMarkConfig.DestX
 		dsY = i.waterMarkConfig.DestY
@@ -179,7 +207,7 @@ func (i *InterventionImage) AddWaterMarkText(waterMarkText string) (err error) {
 	fw := int(c.PointToFixed(i.waterMarkConfig.FontSize)>>6) * len([]rune(waterMarkText))
 	fh := int(c.PointToFixed(i.waterMarkConfig.FontSize) >> 6)
 	if i.waterMarkConfig.DestPosition != "" {
-		dsX, dsY = i.calculateXY(
+		dsX, dsY = i.calculateTextXY(
 			fw,
 			fh,
 			i.newNRGBA.Bounds().Dx(),
@@ -193,28 +221,33 @@ func (i *InterventionImage) AddWaterMarkText(waterMarkText string) (err error) {
 		c.SetSrc(image.NewUniform(i.waterMarkConfig.WaterMarkColor))
 	}
 	pt := freetype.Pt(dsX, dsY)
-	_, err = c.DrawString(waterMarkText, pt)
-	return err
+	if _, err := c.DrawString(waterMarkText, pt); err != nil {
+		log.Printf("AddWaterMarkText DrawString text:%s, err: %s. \r\n", waterMarkText, err.Error())
+	}
+	return
 }
 
 //图片添加图片水印
-func (i *InterventionImage) AddWaterMarkImg(imagePath string) (err error) {
+func (i *InterventionImage) AddWaterMarkImg(imagePath string, w *WaterMarkConfig) {
+	if err := i.setWaterMark(w); err != nil {
+		return
+	}
 	var waterMarkFile = bytes.NewBuffer(imgBase64)
 	if imagePath != "" {
 		wf, err := ioutil.ReadFile(imagePath)
 		if err != nil {
-			log.Println("AddWaterMarkImg open pngfile err.")
-			return err
+			log.Printf("AddWaterMarkImg ReadFile imagePath: %s, err: %s. \r\n", imagePath, err.Error())
+			return
 		}
 		waterMarkFile = bytes.NewBuffer(wf)
 	}
 	waterMarkImage, _, err := image.Decode(waterMarkFile)
 	if err != nil {
-		log.Println("AddWaterMarkImg Decode image err.")
-		return err
+		log.Printf("AddWaterMarkImg Decode image:%s, err: %s. \r\n", waterMarkFile, err.Error())
+		return
 	}
 
-	dsX, dsY := i.calculateXY(
+	dsX, dsY := i.calculateImageXY(
 		waterMarkImage.Bounds().Dx(),
 		waterMarkImage.Bounds().Dy(),
 		i.newNRGBA.Bounds().Dx(),
@@ -228,7 +261,7 @@ func (i *InterventionImage) AddWaterMarkImg(imagePath string) (err error) {
 	//draw.Over源图像透过遮罩后，覆盖在目标图像上（类似图层）
 	draw.Draw(i.newNRGBA, b, i.newNRGBA, image.ZP, draw.Src)
 	draw.Draw(i.newNRGBA, waterMarkImage.Bounds().Add(offset), waterMarkImage, image.ZP, draw.Over)
-	return err
+	return
 }
 
 func (i *InterventionImage) getFileName(filename string) (name string) {
@@ -249,6 +282,9 @@ func (i *InterventionImage) SaveToBMP(filename string) (string, error) {
 		return path, err
 	}
 	err = bmp.Encode(out, i.newNRGBA)
+	if err != nil {
+		log.Printf("save bmp successful., path: %s \r\n", path)
+	}
 	return path, err
 }
 
@@ -260,6 +296,9 @@ func (i *InterventionImage) SaveToGIF(filename string) (string, error) {
 		return path, err
 	}
 	err = gif.Encode(out, i.newNRGBA, &gif.Options{})
+	if err != nil {
+		log.Printf("save gif successful., path: %s \r\n", path)
+	}
 	return path, err
 }
 
@@ -271,6 +310,9 @@ func (i *InterventionImage) SaveToPNG(filename string) (string, error) {
 		return path, err
 	}
 	err = png.Encode(out, i.newNRGBA)
+	if err != nil {
+		log.Printf("save png successful., path: %s \r\n", path)
+	}
 	return path, err
 }
 
@@ -282,6 +324,9 @@ func (i *InterventionImage) SaveToJPG(filename string, quality int) (string, err
 		return path, err
 	}
 	err = jpeg.Encode(out, i.newNRGBA, &jpeg.Options{quality})
+	if err != nil {
+		log.Printf("save jpeg successful., path: %s \r\n", path)
+	}
 	return path, err
 }
 
@@ -292,7 +337,10 @@ func (i *InterventionImage) SaveToWEBP(filename string, quality float32) (string
 	if err != nil {
 		return path, err
 	}
-	err = webp2.Encode(out, i.newNRGBA, &webp2.Options{Lossless: false, Quality: quality})
+	err = webp.Encode(out, i.newNRGBA, &webp.Options{Lossless: false, Quality: quality})
+	if err != nil {
+		log.Printf("save webp successful., path: %s \r\n", path)
+	}
 	return path, err
 }
 
@@ -304,30 +352,45 @@ func (i *InterventionImage) Save(filename string, quality int) (string, error) {
 func (i *InterventionImage) SaveToBMPStream() ([]byte, error) {
 	var buf bytes.Buffer
 	err := bmp.Encode(&buf, i.newNRGBA)
+	if err != nil {
+		log.Println("export bmp successful.")
+	}
 	return buf.Bytes(), err
 }
 
 func (i *InterventionImage) SaveToGIFStream() ([]byte, error) {
 	var buf bytes.Buffer
 	err := gif.Encode(&buf, i.newNRGBA, &gif.Options{})
+	if err != nil {
+		log.Println("export gif successful.")
+	}
 	return buf.Bytes(), err
 }
 
 func (i *InterventionImage) SaveToJPGStream(quality int) ([]byte, error) {
 	var buf bytes.Buffer
 	err := jpeg.Encode(&buf, i.newNRGBA, &jpeg.Options{Quality: quality})
+	if err != nil {
+		log.Println("export jpeg successful.")
+	}
 	return buf.Bytes(), err
 }
 
 func (i *InterventionImage) SaveToPNGStream() ([]byte, error) {
 	var buf bytes.Buffer
 	err := png.Encode(&buf, i.newNRGBA)
+	if err != nil {
+		log.Println("export png successful.")
+	}
 	return buf.Bytes(), err
 }
 
 func (i *InterventionImage) SaveToWEBPStream(quality float32) ([]byte, error) {
 	var buf bytes.Buffer
-	err := webp2.Encode(&buf, i.newNRGBA, &webp2.Options{Lossless: false, Quality: quality})
+	err := webp.Encode(&buf, i.newNRGBA, &webp.Options{Lossless: false, Quality: quality})
+	if err != nil {
+		log.Println("export webp successful.")
+	}
 	return buf.Bytes(), err
 }
 
@@ -353,6 +416,9 @@ func NewInterventionImage(config *Config) (i *InterventionImage, err error) {
 	if i.font, err = freetype.ParseFont(imgFontBase64); err != nil {
 		log.Println(err.Error())
 		return nil, err
+	}
+	if config == nil {
+		config = &Config{}
 	}
 	if (*config == Config{}) {
 		log.Println("no config, create blank image")
