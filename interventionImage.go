@@ -282,7 +282,7 @@ func (i *InterventionImage) SaveToBMP(filename string) (string, error) {
 		return path, err
 	}
 	err = bmp.Encode(out, i.newNRGBA)
-	if err != nil {
+	if err == nil {
 		log.Printf("save bmp successful., path: %s \r\n", path)
 	}
 	return path, err
@@ -296,7 +296,7 @@ func (i *InterventionImage) SaveToGIF(filename string) (string, error) {
 		return path, err
 	}
 	err = gif.Encode(out, i.newNRGBA, &gif.Options{})
-	if err != nil {
+	if err == nil {
 		log.Printf("save gif successful., path: %s \r\n", path)
 	}
 	return path, err
@@ -310,7 +310,7 @@ func (i *InterventionImage) SaveToPNG(filename string) (string, error) {
 		return path, err
 	}
 	err = png.Encode(out, i.newNRGBA)
-	if err != nil {
+	if err == nil {
 		log.Printf("save png successful., path: %s \r\n", path)
 	}
 	return path, err
@@ -324,7 +324,7 @@ func (i *InterventionImage) SaveToJPG(filename string, quality int) (string, err
 		return path, err
 	}
 	err = jpeg.Encode(out, i.newNRGBA, &jpeg.Options{quality})
-	if err != nil {
+	if err == nil {
 		log.Printf("save jpeg successful., path: %s \r\n", path)
 	}
 	return path, err
@@ -338,7 +338,7 @@ func (i *InterventionImage) SaveToWEBP(filename string, quality float32) (string
 		return path, err
 	}
 	err = webp.Encode(out, i.newNRGBA, &webp.Options{Lossless: false, Quality: quality})
-	if err != nil {
+	if err == nil {
 		log.Printf("save webp successful., path: %s \r\n", path)
 	}
 	return path, err
@@ -352,7 +352,7 @@ func (i *InterventionImage) Save(filename string, quality int) (string, error) {
 func (i *InterventionImage) SaveToBMPStream() ([]byte, error) {
 	var buf bytes.Buffer
 	err := bmp.Encode(&buf, i.newNRGBA)
-	if err != nil {
+	if err == nil {
 		log.Println("export bmp successful.")
 	}
 	return buf.Bytes(), err
@@ -361,7 +361,7 @@ func (i *InterventionImage) SaveToBMPStream() ([]byte, error) {
 func (i *InterventionImage) SaveToGIFStream() ([]byte, error) {
 	var buf bytes.Buffer
 	err := gif.Encode(&buf, i.newNRGBA, &gif.Options{})
-	if err != nil {
+	if err == nil {
 		log.Println("export gif successful.")
 	}
 	return buf.Bytes(), err
@@ -370,7 +370,7 @@ func (i *InterventionImage) SaveToGIFStream() ([]byte, error) {
 func (i *InterventionImage) SaveToJPGStream(quality int) ([]byte, error) {
 	var buf bytes.Buffer
 	err := jpeg.Encode(&buf, i.newNRGBA, &jpeg.Options{Quality: quality})
-	if err != nil {
+	if err == nil {
 		log.Println("export jpeg successful.")
 	}
 	return buf.Bytes(), err
@@ -379,7 +379,7 @@ func (i *InterventionImage) SaveToJPGStream(quality int) ([]byte, error) {
 func (i *InterventionImage) SaveToPNGStream() ([]byte, error) {
 	var buf bytes.Buffer
 	err := png.Encode(&buf, i.newNRGBA)
-	if err != nil {
+	if err == nil {
 		log.Println("export png successful.")
 	}
 	return buf.Bytes(), err
@@ -388,7 +388,7 @@ func (i *InterventionImage) SaveToPNGStream() ([]byte, error) {
 func (i *InterventionImage) SaveToWEBPStream(quality float32) ([]byte, error) {
 	var buf bytes.Buffer
 	err := webp.Encode(&buf, i.newNRGBA, &webp.Options{Lossless: false, Quality: quality})
-	if err != nil {
+	if err == nil {
 		log.Println("export webp successful.")
 	}
 	return buf.Bytes(), err

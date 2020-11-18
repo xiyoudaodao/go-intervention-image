@@ -2,7 +2,7 @@ module github.com/xiyoudaodao/go-intervention-image
 
 go 1.15
 
-replace golang.org/x/image => github.com/golang/image v0.0.0-20200927104501-e162460cd6b5
+//replace golang.org/x/image => github.com/golang/image v0.0.0-20200927104501-e162460cd6b5
 
 require (
 	github.com/chai2010/webp v1.1.0
