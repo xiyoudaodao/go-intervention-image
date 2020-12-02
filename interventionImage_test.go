@@ -1,6 +1,8 @@
 package goInterventionImage
 
 import (
+	"image"
+	"image/color"
 	"testing"
 )
 
@@ -45,5 +47,28 @@ func TestInterventionImage_Save(t *testing.T) {
 	}
 	img.Resize(300, 600)
 	img.AddWaterMarkText("this is a testing", nil)
+	img.SaveToJPG("123", 80)
+}
+
+func TestInterventionImage_MakeVerificationCode(t *testing.T) {
+	var w, h = 800, 600
+	newNRGBA := image.NewNRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			newNRGBA.Set(x, y, color.NRGBA{
+				R: 0,
+				G: 0,
+				B: 0,
+				A: 0,
+			})
+		}
+	}
+	img, err := NewInterventionImage(&Config{
+		NewNRGBA: newNRGBA,
+	})
+	if err != nil {
+		panic(err)
+	}
+	img.MakeVerificationCode(6, 100, 20)
 	img.SaveToJPG("123", 80)
 }

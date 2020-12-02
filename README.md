@@ -45,6 +45,16 @@ img.SaveToPNG("test")
 
 //or save to stream, default webp
 img.SaveToStream(80)
+
+//creates valid code
+img, err := NewInterventionImage(nil)
+if err != nil {
+    panic(err)
+}
+verificationCode, _ := img.MakeVerificationCode(6, 100, 30)
+imageByte, _ := img.SaveToWEBPStream(80)
+//Display images in HTML
+<img src=`data:image/webp;base64,${imageByte}`>
 ```
 
 ## Configuration

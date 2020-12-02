@@ -1,8 +1,12 @@
 package goInterventionImage
 
 import (
+	"fmt"
+	"math/rand"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func DeleteExtraSpace(s string) string {
@@ -19,4 +23,21 @@ func DeleteExtraSpace(s string) string {
 		spc_index = reg.FindStringIndex(string(s2))            //继续在字符串中搜索
 	}
 	return string(s2)
+}
+
+func RandomString(n int) string {
+	var letters = []byte("asdfghjkzxcvbnmqwertyuipASDFGHJKLZXCVBNMQWERTYUP23456789")
+	result := make([]byte, n)
+
+	rand.Seed(time.Now().Unix())
+	for i := range result {
+		result[i] = letters[rand.Intn(len(letters))]
+	}
+
+	return string(result)
+}
+
+func ParseInt64(i interface{}) int64 {
+	int64, _ := strconv.ParseInt(fmt.Sprint(i), 10, 64)
+	return int64
 }

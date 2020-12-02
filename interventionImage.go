@@ -16,13 +16,14 @@ import (
 	"image/png"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-type InterventionImage struct {
+type interventionImage struct {
 	fileByte        *bytes.Buffer
 	image           image.Image
 	newNRGBA        *image.NRGBA
@@ -30,10 +31,11 @@ type InterventionImage struct {
 	filePath        string
 	saveFileFolder  string
 	waterMarkConfig *WaterMarkConfig
+	isInitConfig    bool
 }
 
 //打开图片
-func (i *InterventionImage) openImageByte() (err error) {
+func (i *interventionImage) openImageByte() (err error) {
 	filetype, err := ioutil.ReadFile(i.filePath)
 	if err != nil {
 		log.Println(err)
@@ -43,19 +45,19 @@ func (i *InterventionImage) openImageByte() (err error) {
 	return
 }
 
-func (i *InterventionImage) setImage() (err error) {
+func (i *interventionImage) setImage() (err error) {
 	i.image, _, err = image.Decode(i.fileByte)
 	return
 }
 
 //图片缩放
-func (i *InterventionImage) Resize(dstW uint, dstH uint) {
+func (i *interventionImage) Resize(dstW uint, dstH uint) {
 	i.image = resize.Resize(dstW, dstH, i.newNRGBA, resize.Lanczos3)
 	i.initNewNRGBA()
 }
 
 //初始化
-func (i *InterventionImage) initNewNRGBA() {
+func (i *interventionImage) initNewNRGBA() {
 	i.newNRGBA = image.NewNRGBA(i.image.Bounds())
 	for y := 0; y < i.newNRGBA.Bounds().Dy(); y++ {
 		for x := 0; x < i.newNRGBA.Bounds().Dx(); x++ {
@@ -65,7 +67,7 @@ func (i *InterventionImage) initNewNRGBA() {
 }
 
 //计算图片区域色块（黑或白）
-func (i *InterventionImage) calculateImgColor(dx int, dy int, w int, h int) color.RGBA {
+func (i *interventionImage) calculateImgColor(dx int, dy int, w int, h int) color.RGBA {
 	var count float64
 	var bright float64
 	count = 0
@@ -112,7 +114,7 @@ type WaterMarkConfig struct {
 }
 
 //设置水印
-func (i *InterventionImage) setWaterMark(w *WaterMarkConfig) (err error) {
+func (i *interventionImage) setWaterMark(w *WaterMarkConfig) (err error) {
 	if w == nil {
 		w = &WaterMarkConfig{}
 	}
@@ -137,7 +139,7 @@ func (i *InterventionImage) setWaterMark(w *WaterMarkConfig) (err error) {
 }
 
 //文字是从左下角定位
-func (i *InterventionImage) calculateTextXY(waterMarkW int, waterMarkH int, imgW int, imgH int) (destX int, destY int) {
+func (i *interventionImage) calculateTextXY(waterMarkW int, waterMarkH int, imgW int, imgH int) (destX int, destY int) {
 	destX = 0
 	destY = waterMarkH
 	switch strings.ToUpper(DeleteExtraSpace(i.waterMarkConfig.DestPosition)) {
@@ -150,15 +152,17 @@ func (i *InterventionImage) calculateTextXY(waterMarkW int, waterMarkH int, imgW
 		destX = imgW - waterMarkW
 		destY = imgH
 	case "CENTER CENTER":
-		destX = (imgW - waterMarkW) / 2
-		destY = (imgH - waterMarkH) / 2
+		if destX = (imgW - waterMarkW) / 2; destX < 0 {
+			destX = 0
+		}
+		destY = (imgH-waterMarkH)/2 + waterMarkH
 	}
-	log.Printf("destX: %d  destY: %d  \r\n", destX, destY)
+	//log.Printf("destX: %d  destY: %d  \r\n", destX, destY)
 	return
 }
 
 //图片是从左上角定位
-func (i *InterventionImage) calculateImageXY(waterMarkW int, waterMarkH int, imgW int, imgH int) (destX int, destY int) {
+func (i *interventionImage) calculateImageXY(waterMarkW int, waterMarkH int, imgW int, imgH int) (destX int, destY int) {
 	destX = 0
 	destY = 0
 	switch strings.ToUpper(DeleteExtraSpace(i.waterMarkConfig.DestPosition)) {
@@ -174,12 +178,12 @@ func (i *InterventionImage) calculateImageXY(waterMarkW int, waterMarkH int, img
 		destX = (imgW - waterMarkW) / 2
 		destY = (imgH - waterMarkH) / 2
 	}
-	log.Printf("destX: %d  destY: %d  \r\n", destX, destY)
+	//log.Printf("destX: %d  destY: %d  \r\n", destX, destY)
 	return
 }
 
 //图片添加文字水印
-func (i *InterventionImage) AddWaterMarkText(waterMarkText string, w *WaterMarkConfig) {
+func (i *interventionImage) AddWaterMarkText(waterMarkText string, w *WaterMarkConfig) {
 	if err := i.setWaterMark(w); err != nil {
 		return
 	}
@@ -228,7 +232,7 @@ func (i *InterventionImage) AddWaterMarkText(waterMarkText string, w *WaterMarkC
 }
 
 //图片添加图片水印
-func (i *InterventionImage) AddWaterMarkImg(imagePath string, w *WaterMarkConfig) {
+func (i *interventionImage) AddWaterMarkImg(imagePath string, w *WaterMarkConfig) {
 	if err := i.setWaterMark(w); err != nil {
 		return
 	}
@@ -264,7 +268,7 @@ func (i *InterventionImage) AddWaterMarkImg(imagePath string, w *WaterMarkConfig
 	return
 }
 
-func (i *InterventionImage) getFileName(filename string) (name string) {
+func (i *interventionImage) getFileName(filename string) (name string) {
 	if filename == "" {
 		filename = i.filePath
 	}
@@ -274,7 +278,7 @@ func (i *InterventionImage) getFileName(filename string) (name string) {
 	return
 }
 
-func (i *InterventionImage) SaveToBMP(filename string) (string, error) {
+func (i *interventionImage) SaveToBMP(filename string) (string, error) {
 	var path = i.saveFileFolder + i.getFileName(filename) + ".bmp"
 	out, err := os.Create(path)
 	defer out.Close()
@@ -288,7 +292,7 @@ func (i *InterventionImage) SaveToBMP(filename string) (string, error) {
 	return path, err
 }
 
-func (i *InterventionImage) SaveToGIF(filename string) (string, error) {
+func (i *interventionImage) SaveToGIF(filename string) (string, error) {
 	var path = i.saveFileFolder + i.getFileName(filename) + ".gif"
 	out, err := os.Create(path)
 	defer out.Close()
@@ -302,7 +306,7 @@ func (i *InterventionImage) SaveToGIF(filename string) (string, error) {
 	return path, err
 }
 
-func (i *InterventionImage) SaveToPNG(filename string) (string, error) {
+func (i *interventionImage) SaveToPNG(filename string) (string, error) {
 	var path = i.saveFileFolder + i.getFileName(filename) + ".png"
 	out, err := os.Create(path)
 	defer out.Close()
@@ -316,7 +320,7 @@ func (i *InterventionImage) SaveToPNG(filename string) (string, error) {
 	return path, err
 }
 
-func (i *InterventionImage) SaveToJPG(filename string, quality int) (string, error) {
+func (i *interventionImage) SaveToJPG(filename string, quality int) (string, error) {
 	var path = i.saveFileFolder + i.getFileName(filename) + ".jpg"
 	out, err := os.Create(path)
 	defer out.Close()
@@ -330,7 +334,7 @@ func (i *InterventionImage) SaveToJPG(filename string, quality int) (string, err
 	return path, err
 }
 
-func (i *InterventionImage) SaveToWEBP(filename string, quality float32) (string, error) {
+func (i *interventionImage) SaveToWEBP(filename string, quality float32) (string, error) {
 	var path = i.saveFileFolder + i.getFileName(filename) + ".webp"
 	out, err := os.Create(path)
 	defer out.Close()
@@ -345,11 +349,11 @@ func (i *InterventionImage) SaveToWEBP(filename string, quality float32) (string
 }
 
 //默认为jpg格式
-func (i *InterventionImage) Save(filename string, quality int) (string, error) {
+func (i *interventionImage) Save(filename string, quality int) (string, error) {
 	return i.SaveToJPG(filename, quality)
 }
 
-func (i *InterventionImage) SaveToBMPStream() ([]byte, error) {
+func (i *interventionImage) SaveToBMPStream() ([]byte, error) {
 	var buf bytes.Buffer
 	err := bmp.Encode(&buf, i.newNRGBA)
 	if err == nil {
@@ -358,7 +362,7 @@ func (i *InterventionImage) SaveToBMPStream() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func (i *InterventionImage) SaveToGIFStream() ([]byte, error) {
+func (i *interventionImage) SaveToGIFStream() ([]byte, error) {
 	var buf bytes.Buffer
 	err := gif.Encode(&buf, i.newNRGBA, &gif.Options{})
 	if err == nil {
@@ -367,7 +371,7 @@ func (i *InterventionImage) SaveToGIFStream() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func (i *InterventionImage) SaveToJPGStream(quality int) ([]byte, error) {
+func (i *interventionImage) SaveToJPGStream(quality int) ([]byte, error) {
 	var buf bytes.Buffer
 	err := jpeg.Encode(&buf, i.newNRGBA, &jpeg.Options{Quality: quality})
 	if err == nil {
@@ -376,7 +380,7 @@ func (i *InterventionImage) SaveToJPGStream(quality int) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func (i *InterventionImage) SaveToPNGStream() ([]byte, error) {
+func (i *interventionImage) SaveToPNGStream() ([]byte, error) {
 	var buf bytes.Buffer
 	err := png.Encode(&buf, i.newNRGBA)
 	if err == nil {
@@ -385,7 +389,7 @@ func (i *InterventionImage) SaveToPNGStream() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func (i *InterventionImage) SaveToWEBPStream(quality float32) ([]byte, error) {
+func (i *interventionImage) SaveToWEBPStream(quality float32) ([]byte, error) {
 	var buf bytes.Buffer
 	err := webp.Encode(&buf, i.newNRGBA, &webp.Options{Lossless: false, Quality: quality})
 	if err == nil {
@@ -395,8 +399,42 @@ func (i *InterventionImage) SaveToWEBPStream(quality float32) ([]byte, error) {
 }
 
 //default is webp
-func (i *InterventionImage) SaveToStream(quality float32) ([]byte, error) {
+func (i *interventionImage) SaveToStream(quality float32) ([]byte, error) {
 	return i.SaveToWEBPStream(quality)
+}
+
+//creates valid code
+//n
+func (i *interventionImage) MakeVerificationCode(verificationCodeCount int, width int, height int) (verificationCode string, err error) {
+	var w, h = width, height
+	if i.isInitConfig == false {
+		i.newNRGBA = image.NewNRGBA(image.Rect(0, 0, w, h))
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				rand.Seed(ParseInt64(x))
+				randR := uint8(rand.Intn(255-150)) + 150
+				rand.Seed(ParseInt64(x + y))
+				randG := uint8(rand.Intn(255-150)) + 150
+				i.newNRGBA.Set(x, y, color.NRGBA{
+					R: randR,
+					G: randG,
+					B: 255,
+					A: 255,
+				})
+			}
+		}
+	} else {
+		if w != i.newNRGBA.Bounds().Dx() && h != i.newNRGBA.Bounds().Dy() {
+			i.Resize(uint(w), uint(h))
+		}
+	}
+	verificationCode = RandomString(verificationCodeCount)
+	i.AddWaterMarkText(verificationCode, &WaterMarkConfig{
+		FontSize:       float64(w / (verificationCodeCount - 2)),
+		WaterMarkColor: color.RGBA{255, 255, 255, 255},
+	})
+
+	return
 }
 
 //Used to initialize the configuration
@@ -409,8 +447,8 @@ type Config struct {
 	SaveFilefolder string
 }
 
-func NewInterventionImage(config *Config) (i *InterventionImage, err error) {
-	i = &InterventionImage{
+func NewInterventionImage(config *Config) (i *interventionImage, err error) {
+	i = &interventionImage{
 		waterMarkConfig: &WaterMarkConfig{},
 	}
 	if i.font, err = freetype.ParseFont(imgFontBase64); err != nil {
@@ -435,11 +473,12 @@ func NewInterventionImage(config *Config) (i *InterventionImage, err error) {
 			}
 		}
 	} else {
+		i.isInitConfig = true
 		if config.Image != nil {
 			i.initNewNRGBA()
 		}
 		if config.NewNRGBA != nil {
-
+			i.newNRGBA = config.NewNRGBA
 		}
 		if config.SaveFilefolder != "" {
 			i.saveFileFolder = config.SaveFilefolder
